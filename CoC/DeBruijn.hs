@@ -1,3 +1,5 @@
+module CoC.DeBruijn where
+
 import Data.Maybe
 
 type Var = Int
@@ -93,12 +95,3 @@ eqTermHelper :: Env -> Term -> Term -> Term -> Bool
 eqTermHelper e a b c = isJust $ do
   d <- call e a b
   assert $ eqTerm e d c
-
-mainRoutine = do
-  putStrLn "enter a:"
-  a <- readLn
-  putStrLn "enter b:"
-  b <- readLn
-  putStrLn $ if (hasType [] a b) then "a :: b" else "a !:: b"
-
-main = mainRoutine >> main
