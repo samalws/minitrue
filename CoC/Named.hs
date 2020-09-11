@@ -1,7 +1,7 @@
 module CoC.Named where
 
-import Data.List
 import CoC.DeBruijn
+import Data.List
 
 -- n stands for named
 type NVar = String
