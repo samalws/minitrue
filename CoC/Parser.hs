@@ -8,7 +8,7 @@ import Data.Char
 
 ignore :: GenParser Char st a -> GenParser Char st ()
 ignore = (>> return ())
-reservedChar c = elem c "()[]*π∀λ:" || isSpace c
+reservedChar c = elem c "()[]*π∀λ:;." || isSpace c
 varNameParser = many1 $ satisfy $ not . reservedChar
 withinComment = ignore $ do
   many $ noneOf "[]"
@@ -20,14 +20,15 @@ comment = ignore $ do
 whitespace = ignore $ many $ comment <|> ignore space
 
 termParser :: GenParser Char st NTerm
-termParser = starParser <|> piParser <|> lmParser <|> calledParser <|> varParser <|> parenTermParser
+-- termParser = starParser <|> piParser <|> lmParser <|> calledParser <|> varParser <|> parenTermParser
+termParser = starParser <|> piParser <|> lmParser <|> varParser <|> parenTermParser
 starParser = char '*' >> return NStar
 piParser = do
   oneOf "π∀"
   whitespace
   v <- varNameParser
   whitespace
-  char ':'
+  string "::"
   whitespace
   a <- termParser
   whitespace
@@ -69,7 +70,7 @@ declarationParser = eqDeclarationParser <|> typeDeclarationParser
 eqDeclarationParser = do
   v <- varNameParser
   whitespace
-  string ":="
+  char '='
   whitespace
   t <- termParser
   whitespace
@@ -89,4 +90,5 @@ codeParser :: GenParser Char st Code
 codeParser = do
   code <- many $ whitespace >> declarationParser
   whitespace
+  eof
   return code
