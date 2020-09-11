@@ -2,44 +2,55 @@ module CoC.Parser where
 
 import CoC.Named
 import CoC.DeBruijn
+import CoC.Declaration
 import Text.ParserCombinators.Parsec
+import Data.Char
 
-varNameParser = many1 alphaNum
+ignore :: GenParser Char st a -> GenParser Char st ()
+ignore = (>> return ())
+reservedChar c = elem c "()[]*π∀λ:" || isSpace c
+varNameParser = many1 $ satisfy $ not . reservedChar
+withinComment = ignore $ do
+  many $ noneOf "[]"
+  optional (comment >> withinComment)
+comment = ignore $ do
+  char '['
+  withinComment
+  char ']'
+whitespace = ignore $ many $ comment <|> ignore space
 
 termParser :: GenParser Char st NTerm
 termParser = starParser <|> piParser <|> lmParser <|> calledParser <|> varParser <|> parenTermParser
 starParser = char '*' >> return NStar
 piParser = do
-  char 'π'
-  spaces
+  oneOf "π∀"
+  whitespace
   v <- varNameParser
-  spaces
+  whitespace
   char ':'
-  spaces
+  whitespace
   a <- termParser
-  spaces
+  whitespace
   char '.'
-  spaces
+  whitespace
   b <- termParser
   return $ NPi v a b
 lmParser = do
   char 'λ'
-  spaces
+  whitespace
   v <- varNameParser
-  spaces
+  whitespace
   char ':'
-  spaces
+  whitespace
   a <- termParser
-  spaces
+  whitespace
   char '.'
-  spaces
+  whitespace
   b <- termParser
   return $ NLm v a b
 calledParser = do
-  char '`'
-  spaces
-  a <- termParser
-  many1 space
+  a <- varParser <|> parenTermParser
+  (many1 space >> whitespace) <|> (ignore $ whitespace >> many1 space)
   b <- termParser
   return $ NCalled a b
 varParser = do
@@ -47,8 +58,35 @@ varParser = do
   return $ NVarTerm v
 parenTermParser = do
   char '('
-  spaces
+  whitespace
   a <- termParser
-  spaces
+  whitespace
   char ')'
   return a
+
+declarationParser :: GenParser Char st Declaration
+declarationParser = eqDeclarationParser <|> typeDeclarationParser
+eqDeclarationParser = do
+  v <- varNameParser
+  whitespace
+  string ":="
+  whitespace
+  t <- termParser
+  whitespace
+  char ';'
+  return $ EqDeclaration v t
+typeDeclarationParser = do
+  v <- varNameParser
+  whitespace
+  char ':'
+  whitespace
+  t <- termParser
+  whitespace
+  char ';'
+  return $ TypeDeclaration v t
+
+codeParser :: GenParser Char st Code
+codeParser = do
+  code <- many $ whitespace >> declarationParser
+  whitespace
+  return code

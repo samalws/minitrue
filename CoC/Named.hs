@@ -2,6 +2,7 @@ module CoC.Named where
 
 import CoC.DeBruijn
 import Data.List
+import Data.Maybe
 
 -- n stands for named
 type NVar = String
@@ -24,3 +25,14 @@ toDeBruijn e (NCalled a b) = do
 toDeBruijn e (NVarTerm v) = do
   n <- elemIndex v e
   return $ VarTerm n
+
+nHasType :: NTerm -> NTerm -> Bool
+nHasType a b = isJust $ do
+  da <- toDeBruijn [] a
+  db <- toDeBruijn [] b
+  assert $ hasType [] da db
+
+nValidTerm :: NTerm -> Bool
+nValidTerm a = isJust $ do
+  da <- toDeBruijn [] a
+  assert $ validTerm [] da
