@@ -6,6 +6,10 @@ import CoC.Declaration
 import Text.ParserCombinators.Parsec
 import Data.Char
 
+-- <|> sucks!
+infixr 1 <||>
+a <||> b = try a <|> b
+
 ignore :: GenParser Char st a -> GenParser Char st ()
 ignore = (>> return ())
 reservedChar c = elem c "()[]*π∀λ:;." || isSpace c
@@ -17,11 +21,10 @@ comment = ignore $ do
   char '['
   withinComment
   char ']'
-whitespace = ignore $ many $ comment <|> ignore space
+whitespace = ignore $ many $ comment <||> ignore space
 
 termParser :: GenParser Char st NTerm
--- termParser = starParser <|> piParser <|> lmParser <|> calledParser <|> varParser <|> parenTermParser
-termParser = starParser <|> piParser <|> lmParser <|> varParser <|> parenTermParser
+termParser = starParser <||> piParser <||> lmParser <||> calledParser <||> varParser <||> parenTermParser
 starParser = char '*' >> return NStar
 piParser = do
   oneOf "π∀"
@@ -50,8 +53,10 @@ lmParser = do
   b <- termParser
   return $ NLm v a b
 calledParser = do
-  a <- varParser <|> parenTermParser
-  (many1 space >> whitespace) <|> (ignore $ whitespace >> many1 space)
+  a <- varParser <||> parenTermParser
+  (space >> whitespace) <||> (whitespace >> ignore space)
+  space
+  whitespace
   b <- termParser
   return $ NCalled a b
 varParser = do
@@ -66,7 +71,7 @@ parenTermParser = do
   return a
 
 declarationParser :: GenParser Char st Declaration
-declarationParser = eqDeclarationParser <|> typeDeclarationParser
+declarationParser = eqDeclarationParser <||> typeDeclarationParser
 eqDeclarationParser = do
   v <- varNameParser
   whitespace
@@ -86,9 +91,14 @@ typeDeclarationParser = do
   char ';'
   return $ TypeDeclaration v t
 
+declarationParserAndWhitespace = do
+  d <- declarationParser
+  whitespace
+  return d
+
 codeParser :: GenParser Char st Code
 codeParser = do
-  code <- many $ whitespace >> declarationParser
   whitespace
+  code <- many declarationParserAndWhitespace
   eof
   return code
