@@ -54,7 +54,7 @@ lmParser = do
   return $ NLm v a b
 calledParser = do
   a <- varParser <||> parenTermParser
-  (space >> whitespace) <||> (whitespace >> ignore space)
+  (space >> whitespace) <||> (whitespace <* space)
   space
   whitespace
   b <- termParser
@@ -91,14 +91,9 @@ typeDeclarationParser = do
   char ';'
   return $ TypeDeclaration v t
 
-declarationParserAndWhitespace = do
-  d <- declarationParser
-  whitespace
-  return d
-
 codeParser :: GenParser Char st Code
 codeParser = do
   whitespace
-  code <- many declarationParserAndWhitespace
+  code <- many $ declarationParser <* whitespace
   eof
   return code
