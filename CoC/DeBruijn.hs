@@ -61,11 +61,9 @@ typeOf e (Lm a b) = do
 typeOf e (Called a b) = do
   ta <- typeOf e a
   tb <- typeOf e b
-  f ta tb where
-    f (Pi c d) tb = do
-      assert $ eqTerm e tb c
-      return d
-    f _ _ = Nothing
+  case ta of
+    (Pi c d) -> (assert $ eqTerm e tb c) >> (return d)
+    _        -> Nothing
 typeOf e (VarTerm n) = safeIndex n e
 
 -- check if the term is valid
