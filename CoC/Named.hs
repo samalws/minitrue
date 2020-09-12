@@ -8,31 +8,31 @@ import Data.Maybe
 type NVar = String
 data NTerm = NStar | NPi NVar NTerm NTerm | NLm NVar NTerm NTerm | NCalled NTerm NTerm | NVarTerm NVar deriving (Read, Show)
 
-toDeBruijn :: [NVar] -> NTerm -> Maybe Term
-toDeBruijn e NStar = Just Star
-toDeBruijn e (NPi v a b) = do
-  da <- toDeBruijn e a
-  db <- toDeBruijn (v:e) b
+toDeBruijn :: [NVar] -> [(NVar, NTerm)] -> NTerm -> Maybe Term
+toDeBruijn e e2 NStar = Just Star
+toDeBruijn e e2 (NPi v a b) = do
+  da <- toDeBruijn e e2 a
+  db <- toDeBruijn (v:e) e2 b
   return $ Pi da db
-toDeBruijn e (NLm v a b) = do
-  da <- toDeBruijn e a
-  db <- toDeBruijn (v:e) b
+toDeBruijn e e2 (NLm v a b) = do
+  da <- toDeBruijn e e2 a
+  db <- toDeBruijn (v:e) e2 b
   return $ Lm da db
-toDeBruijn e (NCalled a b) = do
-  da <- toDeBruijn e a
-  db <- toDeBruijn e b
+toDeBruijn e e2 (NCalled a b) = do
+  da <- toDeBruijn e e2 a
+  db <- toDeBruijn e e2 b
   return $ Called da db
-toDeBruijn e (NVarTerm v) = do
-  n <- elemIndex v e
-  return $ VarTerm n
+toDeBruijn e e2 (NVarTerm v) = maybe a (Just . VarTerm) b where
+  a = lookup v e2 >>= toDeBruijn [] e2
+  b = elemIndex v e
 
-nHasType :: NTerm -> NTerm -> Bool
-nHasType a b = isJust $ do
-  da <- toDeBruijn [] a
-  db <- toDeBruijn [] b
+nHasType :: [(NVar, NTerm)] -> NTerm -> NTerm -> Bool
+nHasType e2 a b = isJust $ do
+  da <- toDeBruijn [] e2 a
+  db <- toDeBruijn [] e2 b
   assert $ hasType [] da db
 
-nValidTerm :: NTerm -> Bool
-nValidTerm a = isJust $ do
-  da <- toDeBruijn [] a
+nValidTerm :: [(NVar, NTerm)] -> NTerm -> Bool
+nValidTerm e2 a = isJust $ do
+  da <- toDeBruijn [] e2 a
   assert $ validTerm [] da

@@ -12,10 +12,10 @@ err n s = Left $ "Declaration " ++ show n ++ ": " ++ s
 checkDeclaration :: Int -> CodeEnv -> Declaration -> Either String CodeEnv
 checkDeclaration n e (EqDeclaration a b) = do
   maybe (Right ()) (const $ err n $ "variable " ++ show a ++ " is taken") (lookup a e)
-  if (nValidTerm b) then (Right $ (a,b):e) else (err n "invalid term")
+  if (nValidTerm e b) then (Right $ (a,b):e) else (err n "invalid term")
 checkDeclaration n e (TypeDeclaration va b) = do
   a <- maybe (err n $ "variable " ++ show va ++ " is undefined") Right (lookup va e)
-  if (nHasType a b) then (Right e) else (err n "type assertation failed")
+  if (nHasType e a b) then (Right e) else (err n "type assertation failed")
 
 checkCode :: Int -> CodeEnv -> Code -> Either String CodeEnv
 checkCode _ e [] = Right e
