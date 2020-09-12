@@ -31,7 +31,7 @@ piParser = do
   whitespace
   v <- varNameParser
   whitespace
-  string "::"
+  char ':'
   whitespace
   a <- termParser
   whitespace
