@@ -1,0 +1,5 @@
+mmm = λa:*.λb:a.b;
+mmm : ∀a:*.∀b:a.a;
+q = ∀a:*.∀b:a.a;
+nnn = mmm;
+nnn : q;
