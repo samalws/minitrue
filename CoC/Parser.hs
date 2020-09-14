@@ -53,12 +53,13 @@ lmParser = do
   b <- termParser
   return $ NLm v a b
 calledParser = do
-  a <- varParser <||> parenTermParser
-  (space >> whitespace) <||> (whitespace <* space)
-  space
-  whitespace
-  b <- termParser
-  return $ NCalled a b
+  a <- term
+  delim
+  bs <- sepBy1 term delim
+  return $ foldl NCalled a bs
+  where
+    delim = (space >> whitespace) <||> (whitespace <* space)
+    term = varParser <||> parenTermParser
 varParser = do
   v <- varNameParser
   return $ NVarTerm v
