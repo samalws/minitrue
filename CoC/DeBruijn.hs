@@ -3,7 +3,7 @@ module CoC.DeBruijn where
 import Data.Maybe
 
 type Var = Int
-data Term = Star | Pi Term Term | Lm Term Term | Called Term Term | VarTerm Var deriving (Read, Show)
+data Term = Star | Pi Term Term | Lm Term Term | Called Term Term | VarTerm Var deriving (Eq, Read, Show)
 type Env = [Term]
 
 safeIndex :: Int -> [a] -> Maybe a
@@ -15,7 +15,7 @@ assert :: Bool -> Maybe ()
 assert True = Just ()
 assert False = Nothing
 
--- increment all variables in a term
+-- DOES NOT check validity or simplify
 incTerm :: Term -> Term
 incTerm = incTerm_ 0
 
@@ -28,99 +28,88 @@ incTerm_ thr (VarTerm n)
   | n >= thr = VarTerm (n+1)
   | otherwise = VarTerm n
 
--- append a to e and increment all variables
-appendEnv :: Env -> Term -> Maybe Env
-appendEnv e (Called a b) = case (call e a b) of
-  Just c -> appendEnv e c
-  Nothing -> Just $ map incTerm ((Called a b):e)
-{-appendEnv e (Called a b) = do
-  c <- call e a b
-  appendEnv e c-}
-appendEnv e a = Just $ map incTerm (a:e)
-
--- replace v with x in the term
-replace :: Var -> Term -> Term -> Term
-replace _ _ Star = Star
-replace v x (Pi a b) = Pi (replace v x a) (replace (v+1) (incTerm x) b)
-replace v x (Lm a b) = Lm (replace v x a) (replace (v+1) (incTerm x) b)
-replace v x (Called a b) = Called (replace v x a) (replace v x b)
-replace v x (VarTerm a)
-  | a == v = x
-  | a > v = VarTerm (a-1)
-  | otherwise = VarTerm a
-
--- call in environment e, checking type validity and returning result when possible
-call :: Env -> Term -> Term -> Maybe Term
-call e (Called a b) c = do
-  d <- call e a b
-  return $ Called d c
-call e (Lm a b) c = do
-  assert $ hasType e c a
-  return $ replace 0 c b
-call e _ _ = Nothing
-
--- THIS PART DOESN'T WORK
-typeOfCall :: Env -> Term -> Term -> Maybe Term
-typeOfCall e (Called b c) d
-  | isJust $ call e b c = do
-      a <- call e b c
-      typeOfCall e a d
-  | otherwise = do
-      ta <- typeOfCall e b c
-      td <- typeOf e d
-      case ta of
-        (Pi f g) -> (assert $ eqTerm e td f) >> (return g)
-        _        -> Nothing
-typeOfCall e a@(Lm _ _) b = do
-  c <- call e a b
-  typeOf e c
-typeOfCall e a b = do
-  ta <- typeOf e a
-  tb <- typeOf e b
-  case ta of
-    (Pi c d) -> (assert $ eqTerm e tb c) >> (return d)
-    _        -> Nothing
-
--- if the term is validly typed in environment e, return its type
-typeOf :: Env -> Term -> Maybe Term
-typeOf e Star = Nothing
-typeOf e a@(Pi b c) = do
-  assert $ validTerm e b
-  ae <- appendEnv e b
-  assert $ validTerm ae c
-  return Star
-typeOf e (Lm a b) = do
-  assert $ validTerm e a
-  ae <- appendEnv e b
-  tb <- typeOf ae b
-  return $ Pi a tb
-typeOf e (Called a b) = typeOfCall e a b
-typeOf e (VarTerm n) = safeIndex n e
-
--- check if the term is valid
--- typeOf does this for us, so we can use that for everything except for Star (which has no type but is always valid)
 validTerm :: Env -> Term -> Bool
 validTerm _ Star = True
-validTerm e t = isJust $ typeOf e t
+validTerm e a = isJust $ typeOf e a
 
--- check if a has type b in environment e, and that a and b are valid
+-- checks validity and simplifies
+appendEnv :: Env -> Term -> Maybe Env
+appendEnv e a = do
+  sa <- simpl e a
+  return $ map incTerm (a:e)
+
 hasType :: Env -> Term -> Term -> Bool
-hasType e a b = isJust $ do
-  ta <- typeOf e a
-  assert $ eqTerm e ta b
+hasType e a b = m == Just True where
+  m = do
+    ta <- typeOf e a
+    sb <- simpl e b
+    return $ ta == sb
 
--- check if 2 terms are both valid and are equal in environment e
-eqTerm :: Env -> Term -> Term -> Bool
-eqTerm e Star Star = True
-eqTerm e (Pi a b) (Pi c d) = eqTerm e a c && isJust (appendEnv e a) && eqTerm (fromJust $ appendEnv e a) b d
-eqTerm e (Lm a b) (Lm c d) = eqTerm e a c && isJust (appendEnv e a) && eqTerm (fromJust $ appendEnv e a) b d
-eqTerm e (Called a b) (Called c d) = (eqTerm e a c && eqTerm e b d) || eqTermHelper e a b (Called c d) || eqTermHelper e c d (Called a b)
-eqTerm e (Called a b) c = eqTermHelper e a b c
-eqTerm e a (Called b c) = eqTermHelper e b c a
-eqTerm e (VarTerm m) (VarTerm n) = m == n 
-eqTerm e _ _ = False
+-- DOES NOT check validity or simplify
+replace :: Var -> Term -> Term -> Term
+replace _ _ Star = Star
+replace n x (Pi a b) = Pi (replace n x a) (replace (n+1) (incTerm x) b)
+replace n x (Lm a b) = Lm (replace n x a) (replace (n+1) (incTerm x) b)
+replace n x (Called a b) = Called (replace n x a) (replace n x b)
+replace n x (VarTerm m)
+  | n == m = x
+  | n < m = VarTerm (m-1)
+  | otherwise = VarTerm m
 
-eqTermHelper :: Env -> Term -> Term -> Term -> Bool
-eqTermHelper e a b c = isJust $ do
-  d <- call e a b
-  assert $ eqTerm e d c
+-- checks validity and simplifies
+call :: Env -> Term -> Term -> Maybe Term
+call e (Lm a b) c = do
+  sa <- simpl e a
+  tc <- typeOf e c
+  assert $ sa == tc
+  simpl e $ replace 0 c b
+call e (Called a b) d = do
+  c <- call e a b
+  call e c d
+call e a@(VarTerm _) b = do
+  sb <- simpl e b
+  c <- return $ Called a sb
+  assert $ validTerm e c
+  return c
+called _ _ _ = Nothing
+
+-- checks validity and simplifies
+simpl :: Env -> Term -> Maybe Term
+simpl _ Star = Just Star
+simpl e (Pi a b) = do
+  sa <- simpl e a
+  ae <- appendEnv e sa
+  sb <- simpl ae b
+  return $ Pi sa sb
+simpl e (Lm a b) = do
+  sa <- simpl e a
+  ae <- appendEnv e sa
+  sb <- simpl ae b
+  return $ Lm sa sb
+simpl e (Called a b) = call e a b
+simpl e (VarTerm a) = do
+  safeIndex a e
+  return $ VarTerm a
+
+-- checks validity and simplifies
+typeOf :: Env -> Term -> Maybe Term
+typeOf _ Star = Nothing
+typeOf e (Pi a b) = do
+  ae <- appendEnv e a
+  assert $ validTerm ae b
+  return Star
+typeOf e (Lm a b) = do
+  sa <- simpl e a
+  ae <- appendEnv e sa
+  tb <- typeOf ae b
+  return (Pi sa tb)
+typeOf e (Called a b) = case (simpl e a) of
+  Just sa@(Lm _ _) -> call e sa b >>= typeOf e
+  Just (VarTerm n) -> case (safeIndex n e) of
+    Just (Pi c d) -> do
+      tb <- typeOf e b
+      assert $ tb == c
+      return d
+    _ -> Nothing
+  _ -> Nothing
+typeOf e (VarTerm n) = safeIndex n e
