@@ -11,6 +11,5 @@ ignore = λa:*.λb:*.λx:a.λy:b.y;
 zero = λa:*.const (idT a) (idT a) (id a);
 zero : nat;
 
-succ = λn:nat.λa:*.λf:(idT a).λx:a.f (n a f x);
+succ = λn:nat.λa:*.λf:(idT a).λx:a.n a f (f x);
 succ : -> nat nat;
-
