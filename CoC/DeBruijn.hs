@@ -1,7 +1,6 @@
 module CoC.DeBruijn where
 
 import Data.Maybe
-import System.IO.Unsafe
 
 type Var = Int
 data Term = Star | Pi Term Term | Lm Term Term | Called Term Term | VarTerm Var deriving (Eq, Read, Show)
@@ -70,7 +69,7 @@ call e (Lm a b) c = do
   simpl e $ replace 0 c b
 call e (Called a b) d = do
   c <- call e a b
-  call e c d
+  if c /= (Called a b) then call e c d else return $ Called c d
 call e a@(VarTerm _) b = do
   sb <- simpl e b
   c <- return $ Called a sb
@@ -108,14 +107,20 @@ typeOf e (Lm a b) = do
   ae <- appendEnv e sa
   tb <- typeOf ae b
   return (Pi sa tb)
-typeOf e (Called a b) = unsafePerformIO $ print (e, Called a b) >> return (case (simpl e a) of
+typeOf e (Called a b) = case (simpl e a) of
   Just sa@(Lm _ _) -> call e sa b >>= typeOf e
+  Just sa@(Called _ _) -> do
+    ta <- typeOf e sa
+    case ta of
+      (Pi c d) -> do
+        tb <- typeOf e b
+        assert $ tb == c
+        return $ decTerm d
   Just (VarTerm n) -> case (safeIndex n e) of
     Just (Pi c d) -> do
-      unsafePerformIO $ print d >> return (return ())
       tb <- typeOf e b
       assert $ tb == c
       return $ decTerm d
     _ -> Nothing
-  _ -> Nothing)
+  _ -> Nothing
 typeOf e (VarTerm n) = safeIndex n e
