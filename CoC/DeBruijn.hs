@@ -17,11 +17,16 @@ assert False = Nothing
 
 -- increment all variables in a term
 incTerm :: Term -> Term
-incTerm Star = Star
-incTerm (Pi a b) = Pi (incTerm a) (incTerm b)
-incTerm (Lm a b) = Lm (incTerm a) (incTerm b)
-incTerm (Called a b) = Called (incTerm a) (incTerm b)
-incTerm (VarTerm n) = VarTerm (n+1)
+incTerm = incTerm_ 0
+
+incTerm_ :: Int -> Term -> Term
+incTerm_ _ Star = Star
+incTerm_ thr (Pi a b) = Pi (incTerm_ thr a) (incTerm_ (thr+1) b)
+incTerm_ thr (Lm a b) = Lm (incTerm_ thr a) (incTerm_ (thr+1) b)
+incTerm_ thr (Called a b) = Called (incTerm_ thr a) (incTerm_ thr b)
+incTerm_ thr (VarTerm n)
+  | n >= thr = VarTerm (n+1)
+  | otherwise = VarTerm n
 
 -- append a to e and increment all variables
 appendEnv :: Env -> Term -> Env
@@ -30,11 +35,12 @@ appendEnv e a = map incTerm (a:e)
 -- replace v with x in the term
 replace :: Var -> Term -> Term -> Term
 replace _ _ Star = Star
-replace v x (Pi a b) = Pi a $ replace (v+1) (incTerm x) b
-replace v x (Lm a b) = Lm a $ replace (v+1) (incTerm x) b
+replace v x (Pi a b) = Pi (replace v x a) (replace (v+1) (incTerm x) b)
+replace v x (Lm a b) = Lm (replace v x a) (replace (v+1) (incTerm x) b)
 replace v x (Called a b) = Called (replace v x a) (replace v x b)
 replace v x (VarTerm a)
   | a == v = x
+  | a > v = VarTerm (a-1)
   | otherwise = VarTerm a
 
 -- call in environment e, checking type validity and returning result when possible
@@ -47,6 +53,28 @@ call e (Lm a b) c = do
   return $ replace 0 c b
 call e _ _ = Nothing
 
+-- THIS PART DOESN'T WORK
+typeOfCall :: Env -> Term -> Term -> Maybe Term
+typeOfCall e (Called b c) d
+  | isJust $ call e b c = do
+      a <- call e b c
+      typeOfCall e a d
+  | otherwise = do
+      ta <- typeOfCall e b c
+      td <- typeOf e d
+      case ta of
+        (Pi f g) -> (assert $ eqTerm e td f) >> (return g)
+        _        -> Nothing
+typeOfCall e a@(Lm _ _) b = do
+  c <- call e a b
+  typeOf e c
+typeOfCall e a b = do
+  ta <- typeOf e a
+  tb <- typeOf e b
+  case ta of
+    (Pi c d) -> (assert $ eqTerm e tb c) >> (return d)
+    _        -> Nothing
+
 -- if the term is validly typed in environment e, return its type
 typeOf :: Env -> Term -> Maybe Term
 typeOf e Star = Nothing
@@ -58,12 +86,7 @@ typeOf e (Lm a b) = do
   assert $ validTerm e a
   tb <- typeOf (appendEnv e a) b
   return $ Pi a tb
-typeOf e (Called a b) = do
-  ta <- typeOf e a
-  tb <- typeOf e b
-  case ta of
-    (Pi c d) -> (assert $ eqTerm e tb c) >> (return d)
-    _        -> Nothing
+typeOf e (Called a b) = typeOfCall e a b
 typeOf e (VarTerm n) = safeIndex n e
 
 -- check if the term is valid

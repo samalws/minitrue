@@ -15,7 +15,7 @@ checkDeclaration n e (EqDeclaration a b) = do
   if (nValidTerm e b) then (Right $ (a,b):e) else (err n "invalid term")
 checkDeclaration n e (TypeDeclaration va b) = do
   a <- maybe (err n $ "variable " ++ show va ++ " is undefined") Right (lookup va e)
-  if (nHasType e a b) then (Right e) else (err n "type assertation failed")
+  if (nHasType e a b) then (Right e) else (err n $ "type assertation failed; real type of " ++ (show $ toDeBruijn [] e a) ++ " is: " ++ (show $ nTypeOf e a))
 
 checkCode :: Int -> CodeEnv -> Code -> Either String CodeEnv
 checkCode _ e [] = Right e

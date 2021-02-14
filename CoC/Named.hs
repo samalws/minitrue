@@ -26,6 +26,11 @@ toDeBruijn e e2 (NVarTerm v) = maybe a (Just . VarTerm) b where
   a = lookup v e2 >>= toDeBruijn [] e2
   b = elemIndex v e
 
+nTypeOf :: [(NVar, NTerm)] -> NTerm -> Maybe Term
+nTypeOf e2 a = do
+  da <- toDeBruijn [] e2 a
+  typeOf [] da
+
 nHasType :: [(NVar, NTerm)] -> NTerm -> NTerm -> Bool
 nHasType e2 a b = isJust $ do
   da <- toDeBruijn [] e2 a
