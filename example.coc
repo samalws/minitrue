@@ -1,18 +1,4 @@
-[mmm = λa:*.λb:a.b;
-mmm : ∀a:*.∀b:a.a;
-q = ∀a:*.∀b:a.a;
-nnn = mmm;
-nnn : q;]
-
-[f = λa:*.λb:*.a;
-g = λa:*.a;
-x = λa:*.a;
-t = ∀a:*.*;
-x : t;
-x : g t;
-x : f t t;]
-
-[-> = λa:*.λb:*.∀x:a.b;
+-> = λa:*.λb:*.∀x:a.b;
 idT = λa:*.-> a a;
 id = λa:*.λx:a.x;
 id : ∀a:*.idT a;
@@ -20,16 +6,11 @@ nat = ∀a:*.idT (idT a);
 
 const = λa:*.λb:*.λx:a.λy:b.x;
 const : ∀a:*.∀b:*.(-> a (-> b a));
-ignore = λa:*.λb:*.λx:a.λy:b.y;]
+ignore = λa:*.λb:*.λx:a.λy:b.y;
 
-[zero = λa:*.const (idT a) (idT a) (id a);
-zero : nat;]
+zero = λa:*.const (idT a) (idT a) (id a);
+zero : nat;
 
-idT = λa:*.∀x:a.a;
-minisucc = λa:*.λf:(∀x:a.a).λx:a.f x;
-minisuccc = λa:*.λf:(idT a).λx:a.f x;
-[minisucc : ∀a:*.idT (idT a);]
-
-[succ = λn:nat.λa:*.λf:(idT a).λx:a.(f x);
-succ : -> nat nat;]
+succ = λn:nat.λa:*.λf:(idT a).λx:a.f (n a f x);
+succ : -> nat nat;
 

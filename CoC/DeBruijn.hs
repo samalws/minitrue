@@ -1,6 +1,7 @@
 module CoC.DeBruijn where
 
 import Data.Maybe
+import System.IO.Unsafe
 
 type Var = Int
 data Term = Star | Pi Term Term | Lm Term Term | Called Term Term | VarTerm Var deriving (Eq, Read, Show)
@@ -16,17 +17,21 @@ assert True = Just ()
 assert False = Nothing
 
 -- DOES NOT check validity or simplify
-incTerm :: Term -> Term
-incTerm = incTerm_ 0
+decTerm :: Term -> Term
+decTerm = addTerm (-1) 0
 
-incTerm_ :: Int -> Term -> Term
-incTerm_ _ Star = Star
-incTerm_ thr (Pi a b) = Pi (incTerm_ thr a) (incTerm_ (thr+1) b)
-incTerm_ thr (Lm a b) = Lm (incTerm_ thr a) (incTerm_ (thr+1) b)
-incTerm_ thr (Called a b) = Called (incTerm_ thr a) (incTerm_ thr b)
-incTerm_ thr (VarTerm n)
-  | n >= thr = VarTerm (n+1)
-  | otherwise = VarTerm n
+-- DOES NOT check validity or simplify
+incTerm :: Term -> Term
+incTerm = addTerm 1 0
+
+addTerm :: Int -> Int -> Term -> Term
+addTerm _ _ Star = Star
+addTerm n thr (Pi a b) = Pi (addTerm n thr a) (addTerm n (thr+1) b)
+addTerm n thr (Lm a b) = Lm (addTerm n thr a) (addTerm n (thr+1) b)
+addTerm n thr (Called a b) = Called (addTerm n thr a) (addTerm n thr b)
+addTerm n thr (VarTerm m)
+  | m >= thr = VarTerm (n+m)
+  | otherwise = VarTerm m
 
 validTerm :: Env -> Term -> Bool
 validTerm _ Star = True
@@ -103,13 +108,14 @@ typeOf e (Lm a b) = do
   ae <- appendEnv e sa
   tb <- typeOf ae b
   return (Pi sa tb)
-typeOf e (Called a b) = case (simpl e a) of
+typeOf e (Called a b) = unsafePerformIO $ print (e, Called a b) >> return (case (simpl e a) of
   Just sa@(Lm _ _) -> call e sa b >>= typeOf e
   Just (VarTerm n) -> case (safeIndex n e) of
     Just (Pi c d) -> do
+      unsafePerformIO $ print d >> return (return ())
       tb <- typeOf e b
       assert $ tb == c
-      return d
+      return $ decTerm d
     _ -> Nothing
-  _ -> Nothing
+  _ -> Nothing)
 typeOf e (VarTerm n) = safeIndex n e
