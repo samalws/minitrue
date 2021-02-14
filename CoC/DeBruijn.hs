@@ -116,6 +116,7 @@ typeOf e (Called a b) = case (simpl e a) of
         tb <- typeOf e b
         assert $ tb == c
         return $ decTerm d
+      _ -> Nothing
   Just (VarTerm n) -> case (safeIndex n e) of
     Just (Pi c d) -> do
       tb <- typeOf e b
