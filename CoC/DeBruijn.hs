@@ -16,21 +16,17 @@ assert True = Just ()
 assert False = Nothing
 
 -- DOES NOT check validity or simplify
-decTerm :: Term -> Term
-decTerm = addTerm (-1) 1
-
--- DOES NOT check validity or simplify
 incTerm :: Term -> Term
-incTerm = addTerm 1 0
+incTerm = incTerm' 0
 
-addTerm :: Int -> Int -> Term -> Term
-addTerm _ _ Star = Star
-addTerm n thr (Pi a b) = Pi (addTerm n thr a) (addTerm n (thr+1) b)
-addTerm n thr (Lm a b) = Lm (addTerm n thr a) (addTerm n (thr+1) b)
-addTerm n thr (Called a b) = Called (addTerm n thr a) (addTerm n thr b)
-addTerm n thr (VarTerm m)
-  | m >= thr = VarTerm (n+m)
-  | otherwise = VarTerm m
+incTerm' :: Int -> Term -> Term
+incTerm' _ Star = Star
+incTerm' thr (Pi a b) = Pi (incTerm' thr a) (incTerm' (thr+1) b)
+incTerm' thr (Lm a b) = Lm (incTerm' thr a) (incTerm' (thr+1) b)
+incTerm' thr (Called a b) = Called (incTerm' thr a) (incTerm' thr b)
+incTerm' thr (VarTerm n)
+  | n >= thr = VarTerm (n+1)
+  | otherwise = VarTerm n
 
 validTerm :: Env -> Term -> Bool
 validTerm _ Star = True
@@ -116,7 +112,7 @@ typeOf e (Called a b) = case (simpl e a) of
         sb <- simpl e b
         tb <- typeOf e sb
         assert $ tb == c
-        return $ replace 0 sb d -- $ decTerm d
+        return $ replace 0 sb d
       _ -> Nothing
   _ -> Nothing
 typeOf e (VarTerm n) = safeIndex n e
