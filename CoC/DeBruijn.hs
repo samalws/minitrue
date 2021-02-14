@@ -1,7 +1,6 @@
 module CoC.DeBruijn where
 
 import Data.Maybe
-import System.IO.Unsafe
 
 type Var = Int
 data Term = Star | Pi Term Term | Lm Term Term | Called Term Term | VarTerm Var deriving (Eq, Read, Show)
@@ -63,52 +62,52 @@ replace n x (VarTerm m)
 
 -- checks validity and simplifies
 call :: Env -> Term -> Term -> Maybe Term
-call e (Lm a b) c = unsafePerformIO $ putStrLn ("call "++show (Lm a b,c)) >> return (do
+call e (Lm a b) c = do
   sa <- simpl e a
   tc <- typeOf e c
   assert $ sa == tc
-  simpl e $ replace 0 c b)
-call e (Called a b) d = unsafePerformIO $ putStrLn ("call "++show (Called a b,d)) >> return (do
+  simpl e $ replace 0 c b
+call e (Called a b) d = do
   c <- call e a b
-  if c /= (Called a b) then call e c d else return $ Called c d)
-call e a@(VarTerm _) b = unsafePerformIO $ putStrLn ("call "++show (a,b)) >> return (do
+  if c /= (Called a b) then call e c d else return $ Called c d
+call e a@(VarTerm _) b = do
   sb <- simpl e b
   c <- return $ Called a sb
   assert $ validTerm e c
-  return c)
+  return c
 called _ _ _ = Nothing
 
 -- checks validity and simplifies
 simpl :: Env -> Term -> Maybe Term
 simpl _ Star = Just Star
-simpl e (Pi a b) = unsafePerformIO $ putStrLn ("simpl "++show (Pi a b)) >> return (do
+simpl e (Pi a b) = do
   sa <- simpl e a
   ae <- appendEnv e sa
   sb <- simpl ae b
-  return $ Pi sa sb)
-simpl e (Lm a b) = unsafePerformIO $ putStrLn ("simpl "++show (Lm a b)) >> return (do
+  return $ Pi sa sb
+simpl e (Lm a b) = do
   sa <- simpl e a
   ae <- appendEnv e sa
   sb <- simpl ae b
-  return $ Lm sa sb)
-simpl e (Called a b) = unsafePerformIO $ putStrLn ("simpl "++show (Called a b)) >> return (call e a b)
-simpl e (VarTerm a) = unsafePerformIO $ putStrLn ("simpl "++show (VarTerm a)) >> return (do
+  return $ Lm sa sb
+simpl e (Called a b) = call e a b
+simpl e (VarTerm a) = do
   safeIndex a e
-  return $ VarTerm a)
+  return $ VarTerm a
 
 -- checks validity and simplifies
 typeOf :: Env -> Term -> Maybe Term
 typeOf _ Star = Nothing
-typeOf e (Pi a b) = unsafePerformIO $ print ("typeOf",Pi a b) >> return (do
+typeOf e (Pi a b) = do
   ae <- appendEnv e a
   assert $ validTerm ae b
-  return Star)
-typeOf e (Lm a b) = unsafePerformIO $ print ("typeOf",Lm a b) >> return (do
+  return Star
+typeOf e (Lm a b) = do
   sa <- simpl e a
   ae <- appendEnv e sa
   tb <- typeOf ae b
-  return (Pi sa tb))
-typeOf e (Called a b) = unsafePerformIO $ print ("typeOf",Called a b) >> return (case (simpl e a) of
+  return (Pi sa tb)
+typeOf e (Called a b) = case (simpl e a) of
   Just sa@(Lm _ _) -> call e sa b >>= typeOf e
   Just sa@(Called _ _) -> do
     ta <- typeOf e sa
@@ -119,12 +118,9 @@ typeOf e (Called a b) = unsafePerformIO $ print ("typeOf",Called a b) >> return 
         return $ decTerm d
   Just (VarTerm n) -> case (safeIndex n e) of
     Just (Pi c d) -> do
-      unsafePerformIO $ print ("d = ",d) >> return (return ())
       tb <- typeOf e b
-      unsafePerformIO $ print ("tb = ",tb) >> return (return ())
-      unsafePerformIO $ print ("c = ",c) >> return (return ())
       assert $ tb == c
       return $ decTerm d
     _ -> Nothing
-  _ -> Nothing)
+  _ -> Nothing
 typeOf e (VarTerm n) = safeIndex n e
