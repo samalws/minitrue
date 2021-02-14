@@ -29,8 +29,14 @@ incTerm_ thr (VarTerm n)
   | otherwise = VarTerm n
 
 -- append a to e and increment all variables
-appendEnv :: Env -> Term -> Env
-appendEnv e a = map incTerm (a:e)
+appendEnv :: Env -> Term -> Maybe Env
+appendEnv e (Called a b) = case (call e a b) of
+  Just c -> appendEnv e c
+  Nothing -> Just $ map incTerm ((Called a b):e)
+{-appendEnv e (Called a b) = do
+  c <- call e a b
+  appendEnv e c-}
+appendEnv e a = Just $ map incTerm (a:e)
 
 -- replace v with x in the term
 replace :: Var -> Term -> Term -> Term
@@ -80,11 +86,13 @@ typeOf :: Env -> Term -> Maybe Term
 typeOf e Star = Nothing
 typeOf e a@(Pi b c) = do
   assert $ validTerm e b
-  assert $ validTerm (appendEnv e b) c
+  ae <- appendEnv e b
+  assert $ validTerm ae c
   return Star
 typeOf e (Lm a b) = do
   assert $ validTerm e a
-  tb <- typeOf (appendEnv e a) b
+  ae <- appendEnv e b
+  tb <- typeOf ae b
   return $ Pi a tb
 typeOf e (Called a b) = typeOfCall e a b
 typeOf e (VarTerm n) = safeIndex n e
@@ -104,8 +112,8 @@ hasType e a b = isJust $ do
 -- check if 2 terms are both valid and are equal in environment e
 eqTerm :: Env -> Term -> Term -> Bool
 eqTerm e Star Star = True
-eqTerm e (Pi a b) (Pi c d) = eqTerm e a c && eqTerm (appendEnv e a) b d
-eqTerm e (Lm a b) (Lm c d) = eqTerm e a c && eqTerm (appendEnv e a) b d
+eqTerm e (Pi a b) (Pi c d) = eqTerm e a c && isJust (appendEnv e a) && eqTerm (fromJust $ appendEnv e a) b d
+eqTerm e (Lm a b) (Lm c d) = eqTerm e a c && isJust (appendEnv e a) && eqTerm (fromJust $ appendEnv e a) b d
 eqTerm e (Called a b) (Called c d) = (eqTerm e a c && eqTerm e b d) || eqTermHelper e a b (Called c d) || eqTermHelper e c d (Called a b)
 eqTerm e (Called a b) c = eqTermHelper e a b c
 eqTerm e a (Called b c) = eqTermHelper e b c a
