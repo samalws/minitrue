@@ -17,7 +17,7 @@ assert False = Nothing
 
 -- DOES NOT check validity or simplify
 decTerm :: Term -> Term
-decTerm = addTerm (-1) 0
+decTerm = addTerm (-1) 1
 
 -- DOES NOT check validity or simplify
 incTerm :: Term -> Term
@@ -109,19 +109,14 @@ typeOf e (Lm a b) = do
   return (Pi sa tb)
 typeOf e (Called a b) = case (simpl e a) of
   Just sa@(Lm _ _) -> call e sa b >>= typeOf e
-  Just sa@(Called _ _) -> do
+  Just sa -> do
     ta <- typeOf e sa
     case ta of
       (Pi c d) -> do
-        tb <- typeOf e b
+        sb <- simpl e b
+        tb <- typeOf e sb
         assert $ tb == c
-        return $ decTerm d
+        return $ replace 0 sb $ decTerm d
       _ -> Nothing
-  Just (VarTerm n) -> case (safeIndex n e) of
-    Just (Pi c d) -> do
-      tb <- typeOf e b
-      assert $ tb == c
-      return $ decTerm d
-    _ -> Nothing
   _ -> Nothing
 typeOf e (VarTerm n) = safeIndex n e
