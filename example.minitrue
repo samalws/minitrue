@@ -7,7 +7,7 @@ comp : ∀a:*.∀b:*.∀c:*. -> (-> a b) (-> (-> b c) (-> a c));
 
 [note that we check the type of comp after we define it, not before]
 [you can reference code written in previous lines, but not code that hasn't been reached yet]
-[note also that comp is able to use ->. if comp was defined before ->, then it wouldn't be able to do this]
+[note also that comp is able to use -> in its definition. if we defined comp before ->, then we wouldn't be able to do this]
 
 [identity function and its type]
 id = λa:*.λx:a.x;
