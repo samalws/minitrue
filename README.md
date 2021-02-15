@@ -7,4 +7,4 @@ the ministry in *1984* tasked with deciding what is true and what isn't.
 Examples can be found in `examples.minitrue`.
 To compile the typechecker, run the command `ghc minitrue.hs`.
 To run it, type `./minitrue example.minitrue`, replacing `example.minitrue` with the file you want to typecheck.
-Note that Minitrue doesn't work on windows due to a lack of support for the `λ` and `∀` symbols.
+Note that minitrue doesn't work on Windows due to a lack of support for the `λ` and `∀` symbols.
