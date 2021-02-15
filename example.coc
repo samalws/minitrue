@@ -31,5 +31,5 @@ eqTrans = λa:*. λb:a.λc:a.λd:a. λebc:(eq a b c).λecd:(eq a c d).
 eqTrans : ∀a:*. ∀b:a.∀c:a.∀d:a. -> (eq a b c) (-> (eq a c d) (eq a b d));
 
 eqSymm = λa:*. λb:a.λc:a. λebc:(eq a b c).
-        ebc (λx:a. eq a x b) (eqRefl a b);
+         ebc (λx:a. eq a x b) (eqRefl a b);
 eqSymm : ∀a:*. ∀b:a.∀c:a. -> (eq a b c) (eq a c b);

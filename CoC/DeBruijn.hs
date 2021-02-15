@@ -112,7 +112,7 @@ typeOf e (Called a b) = case (simpl e a) of
         sb <- simpl e b
         tb <- typeOf e sb
         assert $ tb == c
-        return $ replace 0 sb d
+        simpl e $ replace 0 sb d
       _ -> Nothing
   _ -> Nothing
 typeOf e (VarTerm n) = safeIndex n e
