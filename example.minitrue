@@ -12,7 +12,7 @@ comp : ∀a:*.∀b:*.∀c:*. -> (-> a b) (-> (-> b c) (-> a c));
 
 [identity function and its type]
 id = λa:*.λx:a.x;
-idT = λa:*.-> a a;
+idT = λa:*.-> a a; [idT A is the same thing as -> A A]
 id : ∀a:*.idT a;
 
 const = λa:*.λb:*.λx:a.λy:b.x;
