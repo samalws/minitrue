@@ -1,5 +1,6 @@
 [minitrue doesn't have the "->" symbol built in, so we need to define it]
 -> = λa:*.λb:*.∀x:a.b;
+[minitrue also doesn't have infix operators, so the way to write "a function from A to B" would be "-> A B", not "A -> B"]
 
 [function composition is also not built in, so we need to define that]
 comp = λa:*.λb:*.λc:*. λf:(-> a b).λg:(-> b c). λx:a.g (f x);
