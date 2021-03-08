@@ -37,11 +37,45 @@ eqSymm = λa:*. λb:a.λc:a. λebc:(eq a b c).
          ebc (λx:a. eq a x b) (eqRefl a b);
 eqSymm : ∀a:*. ∀b:a.∀c:a. -> (eq a b c) (eq a c b);
 
+[substitution property]
+eqSubs = λt:*.λtt:*.λf:-> t tt.λx:t.λy:t.λexy:eq t x y.exy (λv:t.eq tt (f x) (f v)) (eqRefl tt (f x));
+eqSubs : ∀t:*.∀tt:*.∀f:-> t tt.∀x:t.∀y:t.-> (eq t x y) (eq tt (f x) (f y));
+
 [the natural numbers]
 nat = ∀a:*.idT (idT a);
-zero = λa:*.const (idT a) (idT a) (id a);
-zero : nat;
-succ = λn:nat.λa:*.λf:(idT a).λx:a.n a f (f x);
+0 = λa:*.const (idT a) (idT a) (id a);
+0 : nat;
+succ = λn:nat.λa:*.λf:(idT a).λx:a.f (n a f x);
 succ : idT nat;
 add = λn:nat.λm:nat.n nat succ m;
 add : -> nat (idT nat);
+mul = λn:nat.λm:nat.n nat (add m) 0;
+pow = λn:nat.λm:nat.n nat (mul m) (succ 0);
+
+[proofs abt add and stuff]
+succ2 = λn:nat.λa:*.λf:(idT a).λx:a.n a f (f x);
+succ2 : idT nat;
+
+[TODO...]
+[succ2Eq : ∀n:nat.eq nat (succ n) (succ2 n)]
+[MAYBE TODO?:]
+[nSucc0EqN : ∀n:nat.eq nat n (n nat succ 0)]
+
+addZeroLeft = λn:nat.eqRefl nat n;
+addZeroLeft : ∀n:nat.eq nat n (add 0 n);
+addSuccLeft = λn:nat.λm:nat.eqRefl nat (succ (add n m));
+addSuccLeft : ∀n:nat.∀m:nat.eq nat (succ (add n m)) (add (succ n) m);
+
+addAssocDef = λa:nat.λb:nat.λc:nat.eq nat (add a (add b c)) (add (add a b) c);
+
+addAssoc0 = λb:nat.λc:nat.eqTrans nat (add 0 (add b c)) (add b c) (add (add 0 b) c) (eqRefl nat (add b c)) (eqRefl nat (add b c));
+addAssoc0 : ∀b:nat.∀c:nat.addAssocDef 0 b c;
+addAssocI = λa:nat.λb:nat.λc:nat.λh:addAssocDef a b c.
+            eqTrans nat (add (succ a) (add b c)) (succ (add a (add b c))) (add (add (succ a) b) c)
+                (eqSymm nat (succ (add a (add b c))) (add (succ a) (add b c)) (addSuccLeft a (add b c))) (
+            eqTrans nat (succ (add a (add b c))) (succ (add (add a b) c)) (add (add (succ a) b) c)
+                (eqSubs nat nat succ (add a (add b c)) (add (add a b) c) h) (
+            eqTrans nat (succ (add (add a b) c)) (add (succ (add a b)) c) (add (add (succ a) b) c)
+                (addSuccLeft (add a b) c)
+                (eqSubs nat nat (λn:nat.add n c) (succ (add a b)) (add (succ a) b) (addSuccLeft a b))));
+addAssocI : ∀a:nat.∀b:nat.∀c:nat.-> (addAssocDef a b c) (addAssocDef (succ a) b c);
